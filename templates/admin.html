@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>관리자 페이지 — 시험지 수집</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#F8FAFC;color:#1E293B}
+.wrap{max-width:1200px;margin:0 auto;padding:32px 24px}
+h1{font-size:24px;font-weight:800;margin-bottom:4px}
+.sub{color:#64748B;font-size:14px;margin-bottom:28px}
+
+/* 통계 카드 */
+.stats{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:14px;margin-bottom:32px}
+.stat{background:#fff;border-radius:14px;padding:18px 20px;box-shadow:0 2px 8px rgba(0,0,0,.06)}
+.stat-n{font-size:36px;font-weight:800;color:#2563EB}
+.stat-l{font-size:13px;color:#64748B;margin-top:3px}
+
+/* 지역별 */
+.sido-grid{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:32px}
+.sido-tag{background:#EFF6FF;color:#2563EB;font-size:13px;font-weight:600;padding:5px 12px;border-radius:20px}
+
+/* 테이블 */
+.tbl-wrap{background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.06);overflow-x:auto}
+table{width:100%;border-collapse:collapse;min-width:700px}
+th{background:#F1F5F9;padding:12px 16px;text-align:left;font-size:12px;color:#64748B;font-weight:700;letter-spacing:.3px;white-space:nowrap}
+td{padding:12px 16px;border-top:1px solid #E2E8F0;font-size:13px;vertical-align:middle}
+tr:hover td{background:#F8FAFC}
+.thumb{width:52px;height:52px;object-fit:cover;border-radius:8px;cursor:pointer;transition:transform .15s}
+.thumb:hover{transform:scale(1.1)}
+.grade-badge{background:#EFF6FF;color:#2563EB;padding:3px 9px;border-radius:20px;font-size:12px;font-weight:700;white-space:nowrap}
+.subj-badge{background:#F0FDF4;color:#16A34A;padding:3px 9px;border-radius:20px;font-size:12px;font-weight:700}
+.ph{font-family:monospace;font-size:13px}
+.ph.empty{color:#94A3B8;font-style:italic}
+.ts{font-size:11px;color:#94A3B8}
+
+/* 이미지 모달 */
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.8);display:none;align-items:center;justify-content:center;z-index:100;padding:20px}
+.modal.on{display:flex}
+.modal img{max-width:100%;max-height:90vh;border-radius:12px;object-fit:contain}
+.modal-close{position:fixed;top:16px;right:16px;background:white;border:none;border-radius:50%;width:40px;height:40px;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>📋 시험지 수집 현황</h1>
+  <div class="sub">실시간 제출 현황 / <a href="/" style="color:#2563EB">← 메인으로</a></div>
+
+  <!-- 통계 -->
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-n">{{ total }}</div>
+      <div class="stat-l">총 수집 수</div>
+    </div>
+    {% for sido, cnt in by_sido %}
+    <div class="stat">
+      <div class="stat-n" style="font-size:28px">{{ cnt }}</div>
+      <div class="stat-l">{{ sido }}</div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- 목록 테이블 -->
+  <div class="tbl-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>이미지</th>
+          <th>지역</th>
+          <th>학교</th>
+          <th>학년</th>
+          <th>과목</th>
+          <th>전화번호</th>
+          <th>제출 시각</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in submissions %}
+        <tr>
+          <td>
+            {% for path in s.image_paths %}
+            <img class="thumb"
+                 src="/uploads/{{ path }}"
+                 onclick="openImg('/uploads/{{ path }}')"
+                 alt="" style="margin-right:4px">
+          {% endfor %}
+          </td>
+          <td>{{ s.sido_nm }}<br><span style="color:#94A3B8;font-size:11px">{{ s.gugun_nm }}</span></td>
+          <td style="font-weight:600">{{ s.school_nm }}</td>
+          <td><span class="grade-badge">{{ s.grade }}학년</span></td>
+          <td><span class="subj-badge">{{ s.subject }}</span></td>
+          <td>
+            {% if s.phone == '미입력' %}
+              <span class="ph empty">미입력</span>
+            {% else %}
+              <span class="ph">{{ s.phone }}</span>
+            {% endif %}
+          </td>
+          <td class="ts">{{ s.created_at[:16].replace('T',' ') }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="7" style="text-align:center;color:#94A3B8;padding:40px">제출된 시험지가 없습니다</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- 이미지 모달 -->
+<div class="modal" id="modal" onclick="closeImg()">
+  <button class="modal-close" onclick="closeImg()">✕</button>
+  <img id="modalImg" src="" alt="시험지">
+</div>
+
+<script>
+function openImg(src){
+  document.getElementById('modalImg').src=src;
+  document.getElementById('modal').classList.add('on');
+}
+function closeImg(){
+  document.getElementById('modal').classList.remove('on');
+}
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeImg(); });
+</script>
+</body>
+</html>

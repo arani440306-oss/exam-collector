@@ -1,0 +1,871 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#2563EB">
+<title>시험지 수집 캠페인</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{
+  --p:#2563EB;--pl:#EFF6FF;--pd:#1D4ED8;
+  --g:#16A34A;--gl:#F0FDF4;
+  --r:#DC2626;--rl:#FEF2F2;
+  --tx:#1E293B;--tm:#64748B;
+  --br:#E2E8F0;--bg:#F8FAFC;
+  --wh:#FFFFFF;--rd:14px;
+}
+html,body{height:100%;overflow:hidden}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--tx)}
+.app{
+  max-width:480px;margin:0 auto;
+  height:100dvh;height:100vh;
+  display:flex;flex-direction:column;
+  background:var(--wh);
+  box-shadow:0 0 60px rgba(0,0,0,.08);
+  position:relative;overflow:hidden;
+}
+
+/* ── 헤더 ── */
+.hdr{
+  padding:0 16px;
+  height:56px;min-height:56px;
+  display:flex;align-items:center;gap:10px;
+  border-bottom:1px solid var(--br);
+  background:var(--wh);
+  transition:opacity .2s;
+}
+.hdr.hidden{opacity:0;pointer-events:none;height:0;min-height:0;border:none;padding:0}
+.back{width:36px;height:36px;border:none;background:none;cursor:pointer;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:22px;color:var(--tx);transition:background .15s}
+.back:active{background:var(--bg)}
+.hdr-title{flex:1;font-size:16px;font-weight:700}
+.step-dot{font-size:12px;color:var(--tm);background:var(--bg);padding:3px 10px;border-radius:20px;white-space:nowrap}
+
+/* ── 진행 바 ── */
+.prog{height:3px;background:var(--br);flex-shrink:0}
+.prog-fill{height:100%;background:var(--p);transition:width .4s ease;width:0%}
+
+/* ── 화면 전환 ── */
+.screens{flex:1;overflow:hidden;position:relative}
+.screen{
+  position:absolute;inset:0;
+  display:flex;flex-direction:column;
+  opacity:0;pointer-events:none;
+  transition:opacity .2s,transform .2s;
+  transform:translateX(40px);
+}
+.screen.active{opacity:1;pointer-events:auto;transform:translateX(0)}
+.screen.leaving{opacity:0;transform:translateX(-40px)}
+
+/* ── 스크롤 영역 ── */
+.body{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:20px}
+.body.center{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:20px}
+
+/* ── 하단 고정 버튼 ── */
+.foot{padding:12px 20px 20px;border-top:1px solid var(--br);background:var(--wh)}
+.foot.borderless{border-top:none}
+
+/* ── 범용 버튼 ── */
+.btn{
+  width:100%;padding:15px;
+  border:none;border-radius:12px;
+  font-size:16px;font-weight:700;cursor:pointer;
+  transition:all .15s;
+}
+.btn:active{transform:scale(.97)}
+.btn-p{background:var(--p);color:#fff}
+.btn-p:hover{background:var(--pd)}
+.btn-p:disabled{background:var(--br);color:var(--tm);cursor:not-allowed;transform:none}
+.btn-s{background:var(--bg);color:var(--tx);border:2px solid var(--br)}
+.btn-s:hover{border-color:var(--p);color:var(--p)}
+.btn+.btn{margin-top:10px}
+
+/* ── 섹션 타이틀 ── */
+.ttl{font-size:20px;font-weight:800;margin-bottom:6px}
+.sub{color:var(--tm);font-size:13px;margin-bottom:20px;line-height:1.5}
+
+/* ── 빵부스러기 ── */
+.bc{display:flex;flex-wrap:wrap;align-items:center;gap:4px;margin-bottom:18px}
+.bc span{font-size:12px;color:var(--tm)}
+.bc span.hi{color:var(--p);font-weight:600}
+.bc-sep{font-size:10px;color:var(--br)}
+
+/* ── 시도 그리드 ── */
+.sido-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.sido-btn{
+  padding:13px 6px;
+  border:2px solid var(--br);border-radius:12px;
+  background:var(--wh);cursor:pointer;
+  font-size:14px;font-weight:600;color:var(--tx);
+  transition:all .15s;text-align:center;
+}
+.sido-btn:active{transform:scale(.94)}
+.sido-btn:hover{border-color:var(--p);background:var(--pl);color:var(--p)}
+
+/* ── 리스트 아이템 ── */
+.li{
+  padding:14px 16px;
+  border:1px solid var(--br);border-radius:12px;
+  margin-bottom:8px;cursor:pointer;
+  display:flex;align-items:center;gap:10px;
+  transition:all .15s;background:var(--wh);
+}
+.li:active{transform:scale(.98)}
+.li:hover{border-color:var(--p);background:var(--pl)}
+.li-txt{flex:1;font-size:15px;font-weight:500}
+.li-arr{color:var(--tm);font-size:16px}
+
+/* ── 검색창 ── */
+.srch-wrap{position:relative;margin-bottom:14px}
+.srch-ico{position:absolute;left:13px;top:50%;transform:translateY(-50%);font-size:17px}
+.srch{
+  width:100%;padding:13px 14px 13px 42px;
+  border:2px solid var(--br);border-radius:12px;
+  font-size:15px;outline:none;background:var(--wh);
+  transition:border-color .2s;
+}
+.srch:focus{border-color:var(--p)}
+
+/* ── 학년 카드 ── */
+.grade-list{display:flex;flex-direction:column;gap:12px}
+.grade-card{
+  padding:20px;border:2px solid var(--br);border-radius:var(--rd);
+  cursor:pointer;display:flex;align-items:center;gap:16px;
+  background:var(--wh);transition:all .15s;
+}
+.grade-card:active{transform:scale(.98)}
+.grade-card:hover{border-color:var(--p);background:var(--pl)}
+.grade-num{
+  width:52px;height:52px;background:var(--pl);
+  border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font-size:22px;font-weight:800;color:var(--p);flex-shrink:0;
+}
+.grade-txt h3{font-size:17px;font-weight:700}
+.grade-txt p{font-size:12px;color:var(--tm);margin-top:2px}
+.grade-arr{color:var(--tm);font-size:18px;margin-left:auto}
+
+/* ── 과목 그리드 ── */
+.subj-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.subj-btn{
+  padding:16px 6px 12px;
+  border:2px solid var(--br);border-radius:12px;
+  background:var(--wh);cursor:pointer;
+  font-size:13px;font-weight:700;color:var(--tx);
+  text-align:center;transition:all .15s;
+  display:flex;flex-direction:column;align-items:center;gap:6px;
+  min-height:72px;justify-content:center;
+}
+.subj-btn:active{transform:scale(.94)}
+.subj-btn:hover{border-color:var(--p);background:var(--pl);color:var(--p)}
+.subj-btn.sold{
+  background:#F5F5F5;color:#C0C0C0;
+  border-color:#EBEBEB;cursor:not-allowed;
+}
+.sold-tag{
+  font-size:10px;font-weight:800;
+  color:var(--r);letter-spacing:.5px;
+}
+
+/* ── 업로드 ── */
+.summ{background:var(--bg);border-radius:12px;padding:14px 16px;margin-bottom:18px}
+.summ-row{display:flex;justify-content:space-between;padding:5px 0;font-size:14px}
+.summ-row:not(:last-child){border-bottom:1px solid var(--br)}
+.summ-k{color:var(--tm)}
+.summ-v{font-weight:700}
+
+.upload-box{
+  border:2px dashed var(--br);border-radius:var(--rd);
+  padding:36px 20px;text-align:center;
+  cursor:pointer;transition:all .2s;
+  position:relative;overflow:hidden;
+}
+.upload-box:hover,.upload-box.filled{border-color:var(--p);background:var(--pl)}
+.upload-box input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer}
+.up-ico{font-size:48px;margin-bottom:10px}
+.up-txt{font-size:16px;font-weight:700;color:var(--tx)}
+.up-hint{font-size:12px;color:var(--tm);margin-top:5px}
+#previewImg{width:100%;max-height:320px;object-fit:contain;border-radius:10px;display:none}
+
+/* ── SOLD OUT 화면 ── */
+.so-ico{
+  width:88px;height:88px;background:var(--rl);border-radius:50%;
+  display:flex;align-items:center;justify-content:center;font-size:44px;
+}
+
+/* ── 성공 화면 ── */
+.ok-ico{
+  width:88px;height:88px;background:var(--gl);border-radius:50%;
+  display:flex;align-items:center;justify-content:center;font-size:44px;
+  animation:pop .4s cubic-bezier(.175,.885,.32,1.275) both;
+}
+@keyframes pop{from{transform:scale(0);opacity:0}to{transform:scale(1);opacity:1}}
+
+.phone-card{width:100%;background:var(--bg);border-radius:var(--rd);padding:18px}
+.ph-lbl{display:block;font-size:13px;font-weight:700;color:var(--tm);margin-bottom:8px}
+.ph-inp{
+  width:100%;padding:14px;
+  border:2px solid var(--br);border-radius:10px;
+  font-size:20px;font-weight:700;letter-spacing:2px;
+  text-align:center;outline:none;transition:border-color .2s;
+}
+.ph-inp:focus{border-color:var(--p)}
+
+/* ── 완료 화면 ── */
+.done-box{
+  background:var(--gl);border-radius:var(--rd);
+  padding:16px 20px;text-align:center;width:100%;
+}
+
+/* ── 로딩 ── */
+.loading{
+  position:absolute;inset:0;
+  background:rgba(255,255,255,.88);
+  display:none;align-items:center;justify-content:center;flex-direction:column;gap:14px;
+  z-index:50;border-radius:inherit;
+}
+.loading.on{display:flex}
+.spinner{
+  width:44px;height:44px;
+  border:4px solid var(--br);border-top-color:var(--p);
+  border-radius:50%;animation:spin .75s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── 토스트 ── */
+.toast{
+  position:fixed;bottom:28px;left:50%;
+  transform:translateX(-50%) translateY(80px);
+  background:rgba(15,23,42,.9);color:#fff;
+  padding:11px 20px;border-radius:10px;
+  font-size:14px;font-weight:500;
+  transition:transform .3s;z-index:100;
+  white-space:nowrap;max-width:calc(100vw - 40px);text-align:center;
+}
+.toast.on{transform:translateX(-50%) translateY(0)}
+
+/* ── 웰컴 화면 ── */
+.welcome-logo{font-size:56px;width:96px;height:96px;background:var(--pl);border-radius:50%;display:flex;align-items:center;justify-content:center}
+.welcome h1{font-size:24px;font-weight:800;line-height:1.3;text-align:center}
+.notice{background:var(--bg);border-radius:12px;padding:14px 16px;font-size:13px;color:var(--tm);line-height:1.8;text-align:left;width:100%}
+.notice b{color:var(--tx)}
+
+/* ── 학교 마감 ── */
+.li.closed{background:#fafafa;cursor:not-allowed;opacity:.65}
+.li.closed:hover{border-color:var(--br);background:#fafafa}
+.closed-tag{font-size:11px;color:var(--r);font-weight:700;white-space:nowrap;margin-left:6px}
+
+/* ── 다중 이미지 미리보기 ── */
+.preview-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px}
+.preview-item{position:relative;aspect-ratio:1;border-radius:8px;overflow:hidden;background:#eee}
+.preview-item img{width:100%;height:100%;object-fit:cover}
+.preview-item .del-btn{
+  position:absolute;top:3px;right:3px;
+  width:20px;height:20px;border-radius:50%;
+  background:rgba(0,0,0,.55);color:#fff;
+  border:none;cursor:pointer;font-size:12px;
+  display:flex;align-items:center;justify-content:center;line-height:1;
+}
+.preview-count{font-size:13px;color:var(--p);font-weight:700;margin-top:10px;text-align:center}
+
+/* ── 개인정보 동의 ── */
+.agree-row{display:flex;align-items:flex-start;gap:10px;padding:12px 0;cursor:pointer}
+.agree-row input[type=checkbox]{width:18px;height:18px;flex-shrink:0;margin-top:1px;accent-color:var(--p);cursor:pointer}
+.agree-row span{font-size:13px;color:var(--tx);line-height:1.5}
+
+/* ── 유틸 ── */
+.empty{text-align:center;padding:40px 0;color:var(--tm)}
+.empty-ico{font-size:36px;margin-bottom:10px}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- 헤더 -->
+  <div class="hdr hidden" id="hdr">
+    <button class="back" id="backBtn" onclick="goBack()">←</button>
+    <div class="hdr-title" id="hdrTitle"></div>
+    <div class="step-dot" id="stepDot"></div>
+  </div>
+  <div class="prog"><div class="prog-fill" id="progFill"></div></div>
+
+  <!-- 화면들 -->
+  <div class="screens">
+
+    <!-- ── S0: 웰컴 ── -->
+    <div class="screen active" id="s-welcome">
+      <div class="body center" style="padding:32px 24px;gap:22px">
+        <div class="welcome-logo">📄</div>
+        <h1>2026년 1학기<br>중간고사 시험지<br>수집 이벤트</h1>
+        <div class="notice">
+          📚 학교별, 학년별, 과목별 시험지를 수집합니다.<br>
+          🔒 누군가 이미 우리 학교의 우리 학년 시험지 등록을 완료했다면 해당 학교, 해당 학년의 시험지 수집은 <b>마감</b>됩니다.<br>
+          💸 과목별 시험지를 하나 등록할 때마다 <b style="color:var(--p)">네이버페이 1,000원</b>을 지급합니다.
+        </div>
+        <button class="btn btn-p" onclick="startFlow()" style="margin-top:8px">시작하기 →</button>
+      </div>
+    </div>
+
+    <!-- ── S1: 시도 선택 ── -->
+    <div class="screen" id="s-sido">
+      <div class="body">
+        <div class="ttl">지역을 선택해주세요</div>
+        <div class="sub">학교가 있는 시·도를 선택하세요</div>
+        <div class="sido-grid" id="sidoGrid"></div>
+      </div>
+    </div>
+
+    <!-- ── S2: 구군 선택 ── -->
+    <div class="screen" id="s-gugun">
+      <div class="body">
+        <div class="bc" id="bc-gugun"></div>
+        <div class="ttl">구·군을 선택해주세요</div>
+        <div id="gugunList"></div>
+      </div>
+    </div>
+
+    <!-- ── S3: 학교 선택 ── -->
+    <div class="screen" id="s-school">
+      <div class="body">
+        <div class="bc" id="bc-school"></div>
+        <div class="ttl">학교를 선택해주세요</div>
+        <div class="srch-wrap">
+          <span class="srch-ico">🔍</span>
+          <input type="search" class="srch" id="schoolSearch" placeholder="학교 이름 검색…"
+                 oninput="filterSchools(this.value)" autocomplete="off">
+        </div>
+        <div id="schoolList"></div>
+      </div>
+    </div>
+
+    <!-- ── S4: 학년 선택 ── -->
+    <div class="screen" id="s-grade">
+      <div class="body">
+        <div class="bc" id="bc-grade"></div>
+        <div class="ttl">학년을 선택해주세요</div>
+        <div class="sub">시험지를 올릴 학년을 선택하세요</div>
+        <div class="grade-list">
+          <div class="grade-card" onclick="selectGrade(1)">
+            <div class="grade-num">1</div>
+            <div class="grade-txt"><h3>1학년</h3><p>중학교 1학년 시험지</p></div>
+            <span class="grade-arr">›</span>
+          </div>
+          <div class="grade-card" onclick="selectGrade(2)">
+            <div class="grade-num">2</div>
+            <div class="grade-txt"><h3>2학년</h3><p>중학교 2학년 시험지</p></div>
+            <span class="grade-arr">›</span>
+          </div>
+          <div class="grade-card" onclick="selectGrade(3)">
+            <div class="grade-num">3</div>
+            <div class="grade-txt"><h3>3학년</h3><p>중학교 3학년 시험지</p></div>
+            <span class="grade-arr">›</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── S5: 과목 선택 ── -->
+    <div class="screen" id="s-subject">
+      <div class="body">
+        <div class="bc" id="bc-subject"></div>
+        <div class="ttl">과목을 선택해주세요</div>
+        <div class="sub" id="subj-sub">수집된 과목은 SOLD OUT 표시됩니다</div>
+        <div class="subj-grid" id="subjGrid"></div>
+      </div>
+    </div>
+
+    <!-- ── S6: 업로드 ── -->
+    <div class="screen" id="s-upload">
+      <div class="body">
+        <div class="bc" id="bc-upload"></div>
+        <div class="ttl">시험지를 올려주세요</div>
+        <div class="sub">시험지 전체가 잘 보이도록 찍어주세요 📸</div>
+        <div class="summ" id="uploadSumm"></div>
+        <div class="upload-box" id="uploadBox">
+          <input type="file" id="fileInput" accept="image/*" multiple
+                 onchange="onFileSelect(this)">
+          <div id="upPlaceholder">
+            <div class="up-ico">📷</div>
+            <div class="up-txt">사진 찍기 / 갤러리에서 선택</div>
+            <div class="up-hint">여러 장 동시 선택 가능합니다</div>
+          </div>
+        </div>
+        <div class="preview-grid" id="previewGrid"></div>
+        <div class="preview-count" id="previewCount" style="display:none"></div>
+      </div>
+      <div class="foot">
+        <button class="btn btn-p" id="submitBtn" disabled onclick="doUpload()">
+          시험지 제출하기
+        </button>
+      </div>
+    </div>
+
+    <!-- ── S7: SOLD OUT ── -->
+    <div class="screen" id="s-soldout">
+      <div class="body center" style="gap:18px;padding:40px 24px">
+        <div class="so-ico">❌</div>
+        <h2 style="font-size:22px;font-weight:800">이미 수집되었습니다</h2>
+        <p style="color:var(--tm);line-height:1.7;font-size:15px">
+          이 학교의 해당 학년·과목 시험지는<br>
+          이미 다른 분이 올려주셨습니다.<br>
+          <strong style="color:var(--tx)">다른 과목</strong>을 선택해보세요.
+        </p>
+        <div style="width:100%;max-width:300px;display:flex;flex-direction:column;gap:10px">
+          <button class="btn btn-p" onclick="backToSubject()">다른 과목 선택하기</button>
+          <button class="btn btn-s" onclick="goToWelcome()">처음으로</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── S8: 성공 + 전화번호 ── -->
+    <div class="screen" id="s-success">
+      <div class="body center" style="gap:18px;padding:28px 24px">
+        <div class="ok-ico">✅</div>
+        <h2 style="font-size:22px;font-weight:800">등록 완료!</h2>
+        <p style="color:var(--tm);font-size:15px;line-height:1.7">
+          시험지가 성공적으로 등록되었습니다!<br>
+          상품 수령을 위해 <strong style="color:var(--tx)">휴대전화번호</strong>를<br>입력해주세요. 🎁
+        </p>
+        <div class="phone-card">
+          <label class="ph-lbl">📱 휴대전화번호</label>
+          <input type="tel" class="ph-inp" id="phoneInput" placeholder="010-0000-0000"
+                 maxlength="13" oninput="fmtPhone(this)"
+                 onkeydown="if(event.key==='Enter')doPhone()">
+          <label class="agree-row" style="margin-top:12px">
+            <input type="checkbox" id="agreeCheck">
+            <span>기프티콘 발송을 위한 개인정보 수집 및 이용에 동의합니다</span>
+          </label>
+        </div>
+        <div style="width:100%">
+          <button class="btn btn-p" onclick="doPhone()">상품 신청하기 🎁</button>
+          <button class="btn btn-s" onclick="skipPhone()" style="opacity:.6;font-weight:500;font-size:14px">건너뛰기</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── S9: 완료 ── -->
+    <div class="screen" id="s-done">
+      <div class="body center" style="gap:22px;padding:40px 24px">
+        <div style="font-size:68px">🎉</div>
+        <h2 style="font-size:24px;font-weight:800">신청 완료!</h2>
+        <p style="color:var(--tm);line-height:1.8;font-size:15px">
+          시험지 제출과 상품 신청이<br>완료되었습니다.<br>감사합니다! 😊
+        </p>
+        <div class="done-box">
+          <div style="color:var(--g);font-weight:800;font-size:15px">상품이 곧 발송됩니다</div>
+          <div style="color:var(--tm);font-size:13px;margin-top:5px" id="donePhone"></div>
+        </div>
+        <button class="btn btn-s" onclick="goToWelcome()">다른 시험지 제출하기</button>
+      </div>
+    </div>
+
+  </div><!-- /screens -->
+
+  <!-- 로딩 -->
+  <div class="loading" id="loading">
+    <div class="spinner"></div>
+    <div style="color:var(--tm);font-size:14px;text-align:center;padding:0 24px" id="loadingMsg">잠시만 기다려주세요…</div>
+  </div>
+</div><!-- /app -->
+
+<!-- 토스트 -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════
+//  상태
+// ═══════════════════════════════════════════
+const S = { sido:null, gugun:null, school:null, grade:null, subject:null, submissionId:null };
+let allSchools = [];
+let histStack  = [];
+
+const SUBJS = ["국어","수학","영어","과학","사회","역사","도덕","기술·가정","음악","미술","체육","정보"];
+
+const STEP_INFO = {
+  's-sido':    {title:'지역 선택',    step:'1 / 5'},
+  's-gugun':   {title:'구·군 선택',   step:'2 / 5'},
+  's-school':  {title:'학교 선택',    step:'3 / 5'},
+  's-grade':   {title:'학년 선택',    step:'4 / 5'},
+  's-subject': {title:'과목 선택',    step:'5 / 5'},
+  's-upload':  {title:'시험지 업로드', step:''},
+  's-soldout': {title:'수집 완료',    step:''},
+  's-success': {title:'등록 완료',    step:''},
+  's-done':    {title:'신청 완료',    step:''},
+};
+
+const PROGRESS = {
+  's-sido':10,'s-gugun':25,'s-school':42,'s-grade':58,'s-subject':74,'s-upload':88,'s-success':95,'s-done':100
+};
+
+// ═══════════════════════════════════════════
+//  화면 전환
+// ═══════════════════════════════════════════
+function go(id, push=true){
+  const prev = document.querySelector('.screen.active');
+  if(prev){ prev.classList.add('leaving'); setTimeout(()=>prev.classList.remove('leaving'),250); }
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  if(push) histStack.push(id);
+
+  const isWelcome = id==='s-welcome';
+  const hdr = document.getElementById('hdr');
+  hdr.classList.toggle('hidden', isWelcome);
+
+  const info = STEP_INFO[id] || {};
+  document.getElementById('hdrTitle').textContent = info.title || '';
+  document.getElementById('stepDot').textContent  = info.step  || '';
+  document.getElementById('progFill').style.width = (PROGRESS[id]||0) + '%';
+
+  // 뒤로가기 숨김 처리
+  const noBack = ['s-done','s-soldout'];
+  document.getElementById('backBtn').style.visibility = noBack.includes(id) ? 'hidden' : 'visible';
+
+  window.scrollTo(0,0);
+}
+
+function goBack(){
+  if(histStack.length<=1){goToWelcome();return;}
+  histStack.pop();
+  const prev = histStack[histStack.length-1];
+  go(prev, false);
+}
+
+function goToWelcome(){
+  histStack=[];
+  Object.assign(S,{sido:null,gugun:null,school:null,grade:null,subject:null,submissionId:null});
+  go('s-welcome',false);
+}
+
+// ═══════════════════════════════════════════
+//  시작
+// ═══════════════════════════════════════════
+async function startFlow(){
+  showLoad();
+  const sidos = await api('/api/sido');
+  hideLoad();
+
+  const grid = document.getElementById('sidoGrid');
+  grid.innerHTML = sidos.map(s=>
+    `<button class="sido-btn" onclick="selSido('${s}')">${s}</button>`
+  ).join('');
+
+  histStack=['s-sido'];
+  go('s-sido',false);
+}
+
+// ═══════════════════════════════════════════
+//  시도 → 구군
+// ═══════════════════════════════════════════
+async function selSido(sido){
+  S.sido=sido; S.gugun=null; S.school=null; S.grade=null; S.subject=null;
+
+  showLoad();
+  const guguns = await api(`/api/gugun?sido=${enc(sido)}`);
+  hideLoad();
+
+  bc('bc-gugun', [sido]);
+  document.getElementById('gugunList').innerHTML = guguns.map(g=>
+    `<div class="li" onclick="selGugun('${esc(g)}')">
+       <span class="li-txt">${g}</span><span class="li-arr">›</span>
+     </div>`
+  ).join('');
+
+  go('s-gugun');
+}
+
+// ═══════════════════════════════════════════
+//  구군 → 학교
+// ═══════════════════════════════════════════
+async function selGugun(gugun){
+  S.gugun=gugun; S.school=null; S.grade=null; S.subject=null;
+
+  showLoad();
+  allSchools = await api(`/api/schools?sido=${enc(S.sido)}&gugun=${enc(gugun)}`);
+  hideLoad();
+
+  bc('bc-school', [S.sido, gugun]);
+  document.getElementById('schoolSearch').value='';
+  renderSchools(allSchools);
+  go('s-school');
+}
+
+function renderSchools(list){
+  const el = document.getElementById('schoolList');
+  if(!list.length){
+    el.innerHTML='<div class="empty"><div class="empty-ico">🔍</div>검색 결과가 없습니다</div>';
+    return;
+  }
+  el.innerHTML = list.map(s=>{
+    if(s.sold_out){
+      // 모든 슬롯 가득 참 → 완전 마감
+      return `<div class="li closed">
+        <span class="li-txt">${s.name}<span class="closed-tag">마감 🚩</span></span>
+      </div>`;
+    }
+    const partTag = s.has_any
+      ? `<span class="closed-tag" style="color:#F59E0B">일부마감</span>` : '';
+    return `<div class="li" onclick="selSchool('${esc(s.code)}','${esc(s.name)}')">
+      <span class="li-txt">${s.name}${partTag}</span><span class="li-arr">›</span>
+    </div>`;
+  }).join('');
+}
+
+function filterSchools(q){
+  renderSchools(allSchools.filter(s=>s.name.includes(q)));
+}
+
+// ═══════════════════════════════════════════
+//  학교 → 학년
+// ═══════════════════════════════════════════
+function selSchool(code, name){
+  S.school={code,name}; S.grade=null; S.subject=null;
+  bc('bc-grade',[S.sido,S.gugun,name]);
+  go('s-grade');
+}
+
+// ═══════════════════════════════════════════
+//  학년 → 과목
+// ═══════════════════════════════════════════
+async function selectGrade(g){
+  S.grade=g; S.subject=null;
+
+  showLoad();
+  const soldout = await api(`/api/soldout?school_code=${enc(S.school.code)}&grade=${g}`);
+  hideLoad();
+
+  bc('bc-subject',[S.sido,S.gugun,S.school.name,g+'학년']);
+
+  const allDone = SUBJS.every(s=>soldout.includes(s));
+  document.getElementById('subj-sub').textContent =
+    allDone ? '⚠️ 모든 과목이 이미 수집되었습니다' : '수집된 과목은 SOLD OUT 표시됩니다';
+
+  document.getElementById('subjGrid').innerHTML = SUBJS.map(s=>{
+    const so = soldout.includes(s);
+    return `<button class="subj-btn ${so?'sold':''}" ${so?'disabled':`onclick="selSubject('${esc(s)}')" `}>
+      ${s}
+      ${so?'<span class="sold-tag">SOLD OUT</span>':''}
+    </button>`;
+  }).join('');
+
+  go('s-subject');
+}
+
+// ═══════════════════════════════════════════
+//  과목 → 업로드
+// ═══════════════════════════════════════════
+function selSubject(subject){
+  S.subject=subject;
+
+  document.getElementById('uploadSumm').innerHTML = `
+    <div class="summ-row"><span class="summ-k">학교</span><span class="summ-v">${S.school.name}</span></div>
+    <div class="summ-row"><span class="summ-k">학년</span><span class="summ-v">${S.grade}학년</span></div>
+    <div class="summ-row"><span class="summ-k">과목</span><span class="summ-v">${subject}</span></div>
+  `;
+  bc('bc-upload',[S.school.name, S.grade+'학년', subject]);
+
+  // 업로드 영역 초기화
+  selectedFiles=[];
+  document.getElementById('fileInput').value='';
+  document.getElementById('previewGrid').innerHTML='';
+  document.getElementById('previewCount').style.display='none';
+  document.getElementById('upPlaceholder').style.display='block';
+  document.getElementById('uploadBox').classList.remove('filled');
+  document.getElementById('submitBtn').disabled=true;
+
+  go('s-upload');
+}
+
+function backToSubject(){
+  if(S.grade) selectGrade(S.grade);
+}
+
+// ═══════════════════════════════════════════
+//  파일 선택 & 다중 미리보기
+// ═══════════════════════════════════════════
+// 선택된 File 객체 목록 (누적)
+let selectedFiles = [];
+
+function onFileSelect(input){
+  const newFiles = Array.from(input.files).filter(f=>f.type.startsWith('image/'));
+  if(!newFiles.length){toast('이미지 파일만 선택해주세요');return;}
+
+  // 새 파일 추가 (중복 제거: 같은 이름+크기)
+  for(const f of newFiles){
+    const dup = selectedFiles.some(e=>e.name===f.name && e.size===f.size);
+    if(!dup) selectedFiles.push(f);
+  }
+  renderPreviews();
+}
+
+function renderPreviews(){
+  const grid = document.getElementById('previewGrid');
+  const cnt  = document.getElementById('previewCount');
+  const placeholder = document.getElementById('upPlaceholder');
+
+  if(!selectedFiles.length){
+    grid.innerHTML='';
+    cnt.style.display='none';
+    placeholder.style.display='block';
+    document.getElementById('uploadBox').classList.remove('filled');
+    document.getElementById('submitBtn').disabled=true;
+    return;
+  }
+
+  placeholder.style.display='none';
+  document.getElementById('uploadBox').classList.add('filled');
+  document.getElementById('submitBtn').disabled=false;
+
+  grid.innerHTML = selectedFiles.map((f,i)=>{
+    const url = URL.createObjectURL(f);
+    return `<div class="preview-item" id="pi-${i}">
+      <img src="${url}" alt="">
+      <button class="del-btn" onclick="removeFile(${i})">✕</button>
+    </div>`;
+  }).join('');
+
+  cnt.style.display='block';
+  cnt.textContent=`📎 ${selectedFiles.length}장 선택됨`;
+}
+
+function removeFile(idx){
+  selectedFiles.splice(idx,1);
+  document.getElementById('fileInput').value='';
+  renderPreviews();
+}
+
+// ═══════════════════════════════════════════
+//  업로드 제출 (AI 확인 → 실제 업로드)
+// ═══════════════════════════════════════════
+async function doUpload(){
+  if(!selectedFiles.length){toast('시험지 사진을 선택해주세요');return;}
+
+  // ── STEP 1: AI 시험지 확인 (첫 번째 이미지로 판별) ──
+  const checkFd = new FormData();
+  checkFd.append('image', selectedFiles[0]);
+
+  showLoad('AI가 시험지 내용이 맞는지 확인 중입니다...');
+  try{
+    const chkRes  = await fetch('/api/check-image',{method:'POST',body:checkFd});
+    const chkData = await chkRes.json();
+    if(!chkData.is_exam){
+      hideLoad();
+      alert('정확한 시험지 사진을 올려주세요');
+      return;
+    }
+  }catch(e){
+    // AI 확인 실패 시 통과 (서버에서도 동일 처리)
+  }
+
+  // ── STEP 2: 실제 업로드 ──
+  const fd = new FormData();
+  fd.append('school_code', S.school.code);
+  fd.append('school_nm',   S.school.name);
+  fd.append('sido_nm',     S.sido);
+  fd.append('gugun_nm',    S.gugun);
+  fd.append('grade',       S.grade);
+  fd.append('subject',     S.subject);
+  for(const f of selectedFiles) fd.append('images', f);
+
+  showLoad('시험지를 업로드하는 중입니다...');
+  try{
+    const res  = await fetch('/api/upload',{method:'POST',body:fd});
+    const data = await res.json();
+    hideLoad();
+
+    if(data.success){
+      S.submissionId = data.id;
+      document.getElementById('phoneInput').value='';
+      document.getElementById('agreeCheck').checked=false;
+      go('s-success');
+    } else if(data.reason==='sold_out'){
+      go('s-soldout');
+    } else {
+      toast('오류가 발생했습니다. 다시 시도해주세요.');
+    }
+  }catch(e){
+    hideLoad();
+    toast('네트워크 오류가 발생했습니다');
+  }
+}
+
+// ═══════════════════════════════════════════
+//  전화번호
+// ═══════════════════════════════════════════
+function fmtPhone(inp){
+  let v = inp.value.replace(/\D/g,'');
+  if(v.length<=3)       inp.value = v;
+  else if(v.length<=7)  inp.value = v.slice(0,3)+'-'+v.slice(3);
+  else                  inp.value = v.slice(0,3)+'-'+v.slice(3,7)+'-'+v.slice(7,11);
+}
+
+async function doPhone(){
+  const ph = document.getElementById('phoneInput').value;
+  const dg = ph.replace(/\D/g,'');
+  if(dg.length<10||dg.length>11){
+    toast('올바른 휴대전화번호를 입력해주세요 (예: 010-1234-5678)');
+    return;
+  }
+  if(!document.getElementById('agreeCheck').checked){
+    toast('개인정보 수집 및 이용에 동의해주세요');
+    return;
+  }
+  const fd = new FormData();
+  fd.append('submission_id', S.submissionId);
+  fd.append('phone', ph);
+
+  showLoad();
+  try{
+    const res  = await fetch('/api/phone',{method:'POST',body:fd});
+    const data = await res.json();
+    hideLoad();
+    if(data.success){
+      document.getElementById('donePhone').textContent='등록 번호: '+ph;
+      go('s-done');
+    } else {
+      toast('오류가 발생했습니다');
+    }
+  }catch(e){
+    hideLoad();
+    toast('네트워크 오류가 발생했습니다');
+  }
+}
+
+function skipPhone(){
+  document.getElementById('donePhone').textContent='(전화번호 미입력)';
+  go('s-done');
+}
+
+// ═══════════════════════════════════════════
+//  유틸
+// ═══════════════════════════════════════════
+function bc(elId, parts){
+  const el = document.getElementById(elId);
+  el.innerHTML = parts.map((p,i)=>
+    `<span class="${i===parts.length-1?'hi':''}">${p}</span>${i<parts.length-1?'<span class="bc-sep">›</span>':''}`
+  ).join('');
+}
+
+function enc(s){ return encodeURIComponent(s); }
+function esc(s){ return s.replace(/'/g,"\\'").replace(/"/g,'&quot;'); }
+
+async function api(url){
+  const r = await fetch(url);
+  if(!r.ok) throw new Error('API error '+r.status);
+  return r.json();
+}
+
+function showLoad(msg='잠시만 기다려주세요…'){
+  document.getElementById('loadingMsg').textContent = msg;
+  document.getElementById('loading').classList.add('on');
+}
+function hideLoad(){ document.getElementById('loading').classList.remove('on'); }
+
+let _tt;
+function toast(msg){
+  const el = document.getElementById('toast');
+  el.textContent=msg; el.classList.add('on');
+  clearTimeout(_tt);
+  _tt=setTimeout(()=>el.classList.remove('on'),3000);
+}
+</script>
+</body>
+</html>

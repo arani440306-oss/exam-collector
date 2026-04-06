@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+*.pyo
+*.db
+uploads/
+static/qr_code.png
+.env
+ngrok.yml
