@@ -4,6 +4,8 @@ cd /d "%~dp0"
 echo [시험지 수집 캠페인] 서버 시작 중...
 echo.
 
+set ANTHROPIC_API_KEY=여기에_API_키_붙여넣기
+
 pip install -r requirements.txt -q
 
 echo.

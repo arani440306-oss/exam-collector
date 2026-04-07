@@ -22,7 +22,7 @@ from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from PIL import Image
+from PIL import Image, ImageFilter
 
 # ---------------------------------------------------------------------------
 # 경로 설정
@@ -87,16 +87,47 @@ def init_db() -> None:
 init_db()
 
 # ---------------------------------------------------------------------------
-# Claude Vision: 시험지 여부 확인
+# 로컬 흔들림 감지 (PIL Laplacian — API 불필요)
 # ---------------------------------------------------------------------------
-async def check_is_exam_paper(image_data: bytes, content_type: str) -> bool:
+BLUR_THRESHOLD = 150  # 이 값보다 낮으면 흔들린 사진으로 판정
+
+
+def is_blurry(image_data: bytes) -> bool:
+    """Laplacian 분산값으로 흔들림 여부를 판별합니다."""
+    img = Image.open(io.BytesIO(image_data)).convert("L")
+    img = img.resize((400, 400))
+    filtered = img.filter(ImageFilter.Kernel(
+        size=3,
+        kernel=[-1, -1, -1, -1, 8, -1, -1, -1, -1],
+        scale=1,
+        offset=128,
+    ))
+    pixels = list(filtered.getdata())
+    mean = sum(pixels) / len(pixels)
+    variance = sum((p - mean) ** 2 for p in pixels) / len(pixels)
+    return variance < BLUR_THRESHOLD
+
+
+# ---------------------------------------------------------------------------
+# Claude Vision: 시험지 여부 + 흔들림 확인
+# ---------------------------------------------------------------------------
+async def check_image(image_data: bytes, content_type: str) -> str:
     """
-    ANTHROPIC_API_KEY 환경변수가 없으면 검사를 생략하고 True 반환.
-    Claude Haiku로 시험지(문제지) 여부를 판별.
+    이미지를 분석하여 상태를 반환합니다.
+    ANTHROPIC_API_KEY 환경변수가 없으면 'ok' 반환 (검사 생략).
+
+    반환값:
+      "ok"       - 선명하게 촬영된 정상 시험지
+      "blurry"   - 흔들리거나 초점이 맞지 않아 텍스트를 읽기 어려운 사진
+      "not_exam" - 학교 시험지가 아닌 사진
     """
+    # API 없이도 로컬에서 먼저 흔들림 감지
+    if is_blurry(image_data):
+        return "blurry"
+
     api_key = os.environ.get("ANTHROPIC_API_KEY", "")
     if not api_key:
-        return True
+        return "ok"  # API 키 없으면 시험지 여부 검사 생략
 
     def _call():
         import anthropic  # 런타임 임포트 (선택적 의존성)
@@ -107,7 +138,7 @@ async def check_is_exam_paper(image_data: bytes, content_type: str) -> bool:
         b64 = base64.standard_b64encode(image_data).decode()
         msg = client.messages.create(
             model="claude-haiku-4-5-20251001",
-            max_tokens=10,
+            max_tokens=20,
             messages=[{
                 "role": "user",
                 "content": [
@@ -115,18 +146,26 @@ async def check_is_exam_paper(image_data: bytes, content_type: str) -> bool:
                      "source": {"type": "base64", "media_type": safe_type, "data": b64}},
                     {"type": "text",
                      "text": (
-                         "이 이미지가 학교 시험지(시험 문제지 또는 답안지)인가요? "
-                         "'yes' 또는 'no'로만 답하세요."
+                         "이 이미지를 분석하여 반드시 아래 세 단어 중 하나만 응답하세요.\n"
+                         "BLURRY   - 이미지가 흔들리거나 초점이 맞지 않아 텍스트를 읽기 어려운 경우\n"
+                         "NOT_EXAM - 학교 시험지(문제지 또는 답안지)가 아닌 경우\n"
+                         "OK       - 선명하게 촬영된 학교 시험지인 경우\n"
+                         "다른 말은 일절 하지 말고 위 세 단어 중 하나만 출력하세요."
                      )},
                 ],
             }],
         )
-        return "yes" in msg.content[0].text.strip().lower()
+        response = msg.content[0].text.strip().upper()
+        if "BLURRY" in response:
+            return "blurry"
+        if "NOT_EXAM" in response:
+            return "not_exam"
+        return "ok"
 
     try:
         return await asyncio.to_thread(_call)
     except Exception:
-        return True  # 오류 시 통과
+        return "ok"  # 오류 시 통과
 
 
 # ---------------------------------------------------------------------------
@@ -258,12 +297,12 @@ async def api_soldout(school_code: str, grade: int):
 
 @app.post("/api/check-image")
 async def api_check_image(image: UploadFile = File(...)):
-    """AI로 시험지 여부만 확인 (저장 없음)"""
+    """AI로 시험지 여부 및 사진 품질 확인 (저장 없음)"""
     data = await image.read()
     if len(data) > 30 * 1024 * 1024:
         raise HTTPException(400, "파일이 너무 큽니다")
-    is_exam = await check_is_exam_paper(data, image.content_type or "image/jpeg")
-    return {"is_exam": is_exam}
+    status = await check_image(data, image.content_type or "image/jpeg")
+    return {"status": status}
 
 
 @app.post("/api/upload")

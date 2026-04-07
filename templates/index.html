@@ -738,21 +738,32 @@ function removeFile(idx){
 async function doUpload(){
   if(!selectedFiles.length){toast('시험지 사진을 선택해주세요');return;}
 
-  // ── STEP 1: AI 시험지 확인 (첫 번째 이미지로 판별) ──
-  const checkFd = new FormData();
-  checkFd.append('image', selectedFiles[0]);
-
-  showLoad('AI가 시험지 내용이 맞는지 확인 중입니다...');
+  // ── STEP 1: AI로 모든 이미지 일괄 확인 ──
+  showLoad('AI가 사진을 확인 중입니다…');
   try{
-    const chkRes  = await fetch('/api/check-image',{method:'POST',body:checkFd});
-    const chkData = await chkRes.json();
-    if(!chkData.is_exam){
+    const results = await Promise.all(selectedFiles.map(f=>{
+      const fd = new FormData();
+      fd.append('image', f);
+      return fetch('/api/check-image',{method:'POST',body:fd}).then(r=>r.json());
+    }));
+
+    const blurry  = results.find(r=>r.status==='blurry');
+    const notExam = results.find(r=>r.status==='not_exam');
+
+    if(blurry){
       hideLoad();
-      alert('정확한 시험지 사진을 올려주세요');
+      toast('사진이 흔들렸습니다. 다시 선명하게 찍어주세요 📷');
+      return;
+    }
+    if(notExam){
+      hideLoad();
+      toast('시험지 사진이 아닙니다. 시험지를 촬영한 사진을 올려주세요 📄');
       return;
     }
   }catch(e){
-    // AI 확인 실패 시 통과 (서버에서도 동일 처리)
+    hideLoad();
+    toast('이미지 확인 중 오류가 발생했습니다. 다시 시도해주세요.');
+    return;
   }
 
   // ── STEP 2: 실제 업로드 ──
